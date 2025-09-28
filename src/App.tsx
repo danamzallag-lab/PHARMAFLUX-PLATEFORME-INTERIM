@@ -9,6 +9,8 @@ import { EmployerDashboard } from './components/EmployerDashboard';
 import { JobsPage } from './components/JobsPage';
 import { JobDetailPage } from './components/JobDetailPage';
 import { CreateJobPage } from './components/CreateJobPage';
+import { DebugEnvPage } from './components/DebugEnvPage';
+import { DebugQuickAccess } from './components/DebugQuickAccess';
 import { useAuth } from './contexts/AuthContext';
 
 export default function App() {
@@ -75,6 +77,8 @@ export default function App() {
         return <JobDetailPage onNavigate={navigate} />;
       case 'create-job':
         return <CreateJobPage onNavigate={navigate} />;
+      case 'debug-env':
+        return <DebugEnvPage onNavigate={navigate} />;
       default:
         return <LandingPage onNavigate={navigate} />;
     }
@@ -83,6 +87,7 @@ export default function App() {
   return (
     <div className="size-full">
       {renderPage()}
+      <DebugQuickAccess onNavigate={navigate} />
     </div>
   );
 }
