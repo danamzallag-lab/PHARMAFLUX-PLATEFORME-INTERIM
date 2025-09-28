@@ -91,6 +91,34 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signUp = async (email: string, password: string, metadata?: any) => {
     const result = await auth.signUp(email, password, metadata)
+
+    // Si l'inscription réussit et qu'on a des métadonnées avec un type,
+    // on met à jour le profil créé automatiquement
+    if (!result.error && result.data.user && metadata?.type) {
+      try {
+        // Attendre un peu pour que le trigger de création du profil se termine
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        // Récupérer le profil créé par le trigger et le mettre à jour
+        const { data: profile, error: getError } = await profiles.getByAuthUid(result.data.user.id)
+
+        if (!getError && profile) {
+          const { error: updateError } = await profiles.update(profile.id, {
+            type: metadata.type,
+            name: metadata.name || email.split('@')[0]
+          })
+
+          if (updateError) {
+            console.error('Error updating profile type:', updateError)
+          }
+        } else {
+          console.error('Error fetching created profile:', getError)
+        }
+      } catch (error) {
+        console.error('Error in profile update process:', error)
+      }
+    }
+
     return { error: result.error }
   }
 
