@@ -13,8 +13,8 @@ Le projet est configuré pour se déployer automatiquement sur Vercel dès que v
 ### Variables requises :
 
 ```
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key-here
+VITE_SUPABASE_URL=https://khcnyegvumgzhkjazsaj.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoY255ZWd2dW1nemhramF6c2FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3OTEzNzIsImV4cCI6MjA3NDM2NzM3Mn0.Y2ncNWLcmwFGtqsia5FY5NvrS_BKRUrB8sTlXLFKTUc
 VITE_APP_URL=https://pharmaflux.vercel.app
 ```
 
