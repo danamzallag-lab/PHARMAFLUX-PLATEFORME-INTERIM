@@ -36,14 +36,21 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
     setError(null);
 
     try {
-      const { error } = await signIn(email, password);
+      console.log('🚀 Démarrage de la connexion...');
+      const { error, data } = await signIn(email, password);
+
       if (error) {
+        console.error('❌ Échec de la connexion:', error);
         setError(error.message || 'Erreur de connexion');
+        setLoading(false);
+      } else if (data?.user) {
+        console.log('✅ Connexion réussie, redirection en cours...');
+        // Garder loading=true pendant la redirection automatique
+        // La redirection se fera automatiquement via useEffect dans App.tsx
       }
-      // La redirection se fera automatiquement via useEffect dans App.tsx
     } catch (err) {
+      console.error('💥 Erreur inattendue:', err);
       setError('Erreur de connexion');
-    } finally {
       setLoading(false);
     }
   };

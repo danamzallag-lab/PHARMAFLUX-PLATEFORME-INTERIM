@@ -7,7 +7,7 @@ interface AuthContextType {
   session: Session | null
   profile: Profile | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<{ error: any }>
+  signIn: (email: string, password: string) => Promise<{ error: any; data: any }>
   signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>
   signOut: () => Promise<void>
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>
@@ -85,8 +85,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }
 
   const signIn = async (email: string, password: string) => {
+    console.log('🔐 Tentative de connexion pour:', email)
     const result = await auth.signIn(email, password)
-    return { error: result.error }
+
+    if (result.error) {
+      console.error('❌ Erreur de connexion:', result.error)
+      return { error: result.error, data: null }
+    }
+
+    if (result.data?.user) {
+      console.log('✅ Connexion réussie pour:', result.data.user.email)
+      console.log('🔄 Chargement du profil utilisateur...')
+
+      // Charger le profil immédiatement après connexion
+      await loadProfile(result.data.user.id)
+    }
+
+    return { error: null, data: result.data }
   }
 
   const signUp = async (email: string, password: string, metadata?: any) => {
