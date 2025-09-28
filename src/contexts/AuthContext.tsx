@@ -92,30 +92,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signUp = async (email: string, password: string, metadata?: any) => {
     const result = await auth.signUp(email, password, metadata)
 
-    // Si l'inscription réussit et qu'on a des métadonnées avec un type,
-    // on met à jour le profil créé automatiquement
-    if (!result.error && result.data.user && metadata?.type) {
+    // Si l'inscription réussit, créer le profil directement
+    if (!result.error && result.data.user) {
       try {
-        // Attendre un peu pour que le trigger de création du profil se termine
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // Créer le profil utilisateur
+        const profileData = {
+          auth_uid: result.data.user.id,
+          email: email,
+          type: metadata?.type || 'candidat',
+          name: metadata?.name || email.split('@')[0],
+          phone: null,
+          latitude: null,
+          longitude: null,
+          competences: null,
+          availabilities: null
+        }
 
-        // Récupérer le profil créé par le trigger et le mettre à jour
-        const { data: profile, error: getError } = await profiles.getByAuthUid(result.data.user.id)
+        const { error: createError } = await profiles.create(profileData)
 
-        if (!getError && profile) {
-          const { error: updateError } = await profiles.update(profile.id, {
-            type: metadata.type,
-            name: metadata.name || email.split('@')[0]
-          })
-
-          if (updateError) {
-            console.error('Error updating profile type:', updateError)
-          }
+        if (createError) {
+          console.error('Error creating profile:', createError)
         } else {
-          console.error('Error fetching created profile:', getError)
+          console.log('Profile created successfully for user:', result.data.user.id)
         }
       } catch (error) {
-        console.error('Error in profile update process:', error)
+        console.error('Error in profile creation process:', error)
       }
     }
 
