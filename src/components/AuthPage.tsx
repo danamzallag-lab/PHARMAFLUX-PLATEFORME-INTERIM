@@ -8,6 +8,7 @@ import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { ArrowLeft, Mail, Lock, User, Building, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 interface AuthPageProps {
   onNavigate: (page: string) => void;
@@ -36,20 +37,26 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
     setError(null);
 
     try {
-      console.log('🚀 Démarrage de la connexion...');
-      const { error, data } = await signIn(email, password);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
       if (error) {
-        console.error('❌ Échec de la connexion:', error);
         setError(error.message || 'Erreur de connexion');
         setLoading(false);
-      } else if (data?.user) {
-        console.log('✅ Connexion réussie, redirection en cours...');
-        // Garder loading=true pendant la redirection automatique
-        // La redirection se fera automatiquement via useEffect dans App.tsx
+        return;
+      }
+
+      if (data?.user) {
+        // Redirection immédiate - le useEffect d'App.tsx gérera le profil
+        console.log('✅ Connexion réussie, redirection...');
+
+        // Redirection par défaut vers candidat, l'App.tsx corrigera si nécessaire
+        onNavigate('candidate-dashboard');
+        setLoading(false);
       }
     } catch (err) {
-      console.error('💥 Erreur inattendue:', err);
       setError('Erreur de connexion');
       setLoading(false);
     }

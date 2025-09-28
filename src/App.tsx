@@ -19,31 +19,15 @@ export default function App() {
   const { user, profile, loading } = useAuth();
 
   useEffect(() => {
-    console.log('🔄 État auth changé:', {
-      loading,
-      hasUser: !!user,
-      hasProfile: !!profile,
-      profileType: profile?.type,
-      currentPage
-    });
-
     if (!loading && user && profile) {
       // Rediriger automatiquement selon le type de profil
-      console.log('👤 Utilisateur connecté avec profil:', profile.type);
-
       if (profile.type === 'candidat') {
-        console.log('🎯 Redirection vers candidat dashboard');
         setCurrentPage('candidate-dashboard');
       } else if (profile.type === 'employeur') {
-        console.log('🎯 Redirection vers employeur dashboard');
         setCurrentPage('employer-dashboard');
       }
-    } else if (!loading && user && !profile) {
-      // Utilisateur connecté mais profil pas encore chargé
-      console.log('⏳ Utilisateur connecté, attente du profil...');
     } else if (!loading && !user) {
       // Rediriger vers la landing page si pas connecté
-      console.log('🏠 Pas d\'utilisateur, redirection vers landing');
       if (currentPage !== 'landing' && currentPage !== 'auth') {
         setCurrentPage('landing');
       }

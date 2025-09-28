@@ -85,18 +85,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }
 
   const signIn = async (email: string, password: string) => {
-    console.log('🔐 Tentative de connexion pour:', email)
     const result = await auth.signIn(email, password)
 
     if (result.error) {
-      console.error('❌ Erreur de connexion:', result.error)
       return { error: result.error, data: null }
     }
 
     if (result.data?.user) {
-      console.log('✅ Connexion réussie pour:', result.data.user.email)
-      console.log('🔄 Chargement du profil utilisateur...')
-
       // Charger le profil immédiatement après connexion
       await loadProfile(result.data.user.id)
     }
