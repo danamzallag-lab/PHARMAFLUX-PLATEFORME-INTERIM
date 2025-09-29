@@ -35,6 +35,7 @@ import {
   Bell,
   User,
   Building,
+  Building2,
   Briefcase,
   GraduationCap,
   Calculator,
@@ -59,6 +60,7 @@ import {
   BookmarkCheck,
   ThumbsUp,
   MessageCircle,
+  MessageSquare,
   Send,
   Edit,
   Trash2,
@@ -72,7 +74,8 @@ import {
   RefreshCw,
   Loader2,
   SunIcon,
-  MoonIcon
+  MoonIcon,
+  UserPlus
 } from 'lucide-react';
 
 // Icônes personnalisées pour la pharmacie
@@ -113,8 +116,10 @@ export const PharmaIcons = {
   
   // Utilisateurs
   User,
+  UserPlus,
   Users,
   Building,
+  Building2,
   GraduationCap,
   
   // Business
@@ -150,6 +155,7 @@ export const PharmaIcons = {
   Mail,
   Phone,
   MessageCircle,
+  MessageSquare,
   Send,
   
   // Actions

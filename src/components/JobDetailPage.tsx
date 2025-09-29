@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { toast } from 'sonner@2.0.3';
 import { Icon, PharmacistIcon, PharmaIcon } from './shared/Icons';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -126,6 +126,9 @@ export function JobDetailPage({ onNavigate }: JobDetailPageProps) {
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>Partager cette mission</DialogTitle>
+                    <DialogDescription>
+                      Choisissez comment vous souhaitez partager cette offre d'emploi
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="grid grid-cols-2 gap-3 pt-4">
                     <Button 

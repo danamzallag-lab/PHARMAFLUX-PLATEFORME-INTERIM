@@ -27,6 +27,17 @@ export interface Profile {
   longitude: number | null
   competences: string[] | null
   availabilities: any | null
+  // Champs spécifiques employeurs
+  company_name: string | null
+  legal_name: string | null
+  siret: string | null
+  address_street: string | null
+  address_city: string | null
+  address_postal_code: string | null
+  hr_contact_name: string | null
+  hr_contact_email: string | null
+  hr_contact_phone: string | null
+  onboarding_completed: boolean
   created_at: string
 }
 
@@ -82,6 +93,16 @@ export interface Referral {
   token: string
   status: 'pending' | 'registered' | 'rewarded'
   created_at: string
+}
+
+export interface EmployerDocument {
+  id: string
+  employer_id: string
+  document_type: 'kbis' | 'ars' | 'insurance' | 'other'
+  file_name: string
+  file_url: string
+  file_size: number | null
+  uploaded_at: string
 }
 
 // Fonctions d'aide pour l'authentification
@@ -178,4 +199,16 @@ export const loyaltyPoints = {
 
   addPoints: (userId: string, points: number) =>
     supabase.rpc('add_loyalty_points', { user_id: userId, points_to_add: points })
+}
+
+// Fonctions d'aide pour les documents employeurs
+export const employerDocuments = {
+  getByEmployer: (employerId: string) =>
+    supabase.from('employer_documents').select('*').eq('employer_id', employerId).order('uploaded_at', { ascending: false }),
+
+  create: (document: Omit<EmployerDocument, 'id' | 'uploaded_at'>) =>
+    supabase.from('employer_documents').insert(document),
+
+  delete: (id: string) =>
+    supabase.from('employer_documents').delete().eq('id', id)
 }

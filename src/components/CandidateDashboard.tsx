@@ -5,7 +5,7 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from './ui/dialog';
 import { toast } from 'sonner@2.0.3';
 import { 
   Search, 
@@ -30,7 +30,10 @@ import {
   Shield,
   QrCode,
   Copy,
-  Share2
+  Share2,
+  Upload,
+  FileText,
+  X
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Icon, PharmacistIcon, PreparatorIcon } from './shared/Icons';
@@ -44,27 +47,54 @@ export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [showReferralDialog, setShowReferralDialog] = useState(false);
   const [showQrDialog, setShowQrDialog] = useState(false);
+  const [showFileUploadDialog, setShowFileUploadDialog] = useState(false);
+  const [currentUploadType, setCurrentUploadType] = useState('');
   const [profileCompletion, setProfileCompletion] = useState({
     diploma: false,
     orderNumber: false,
     specializations: false
   });
+  const [uploadedFiles, setUploadedFiles] = useState({
+    diploma: null as File | null,
+    orderNumber: null as File | null,
+    specializations: null as File | null
+  });
 
   const handleProfileAction = (action: string) => {
-    switch (action) {
-      case 'diploma':
-        setProfileCompletion(prev => ({ ...prev, diploma: !prev.diploma }));
-        toast(profileCompletion.diploma ? 'Diplôme retiré' : 'Diplôme ajouté !');
-        break;
-      case 'order':
-        setProfileCompletion(prev => ({ ...prev, orderNumber: !prev.orderNumber }));
-        toast(profileCompletion.orderNumber ? 'N° Ordre retiré' : 'N° Ordre validé !');
-        break;
-      case 'specializations':
-        setProfileCompletion(prev => ({ ...prev, specializations: !prev.specializations }));
-        toast(profileCompletion.specializations ? 'Spécialisations retirées' : 'Spécialisations ajoutées !');
-        break;
+    setCurrentUploadType(action);
+    setShowFileUploadDialog(true);
+  };
+
+  const handleFileUpload = (file: File | null) => {
+    if (file && currentUploadType) {
+      setUploadedFiles(prev => ({
+        ...prev,
+        [currentUploadType]: file
+      }));
+      setProfileCompletion(prev => ({
+        ...prev,
+        [currentUploadType]: true
+      }));
+      toast('Fichier uploadé !', { 
+        description: `${file.name} a été ajouté à votre profil` 
+      });
+      setShowFileUploadDialog(false);
+      setCurrentUploadType('');
     }
+  };
+
+  const removeFile = (type: string) => {
+    setUploadedFiles(prev => ({
+      ...prev,
+      [type]: null
+    }));
+    setProfileCompletion(prev => ({
+      ...prev,
+      [type]: false
+    }));
+    toast('Fichier supprimé', { 
+      description: 'Le document a été retiré de votre profil' 
+    });
   };
 
   const handleQuickAction = (action: string) => {
@@ -576,6 +606,9 @@ export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
               <Eye className="w-5 h-5 mr-2 text-emerald-600" />
               Mon profil pharmacie
             </DialogTitle>
+            <DialogDescription>
+              Consultez et modifiez les informations de votre profil professionnel
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 pt-4">
             <div className="grid md:grid-cols-2 gap-6">
@@ -633,6 +666,9 @@ export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
               <Calendar className="w-5 h-5 mr-2 text-emerald-600" />
               Planning gardes et disponibilités
             </DialogTitle>
+            <DialogDescription>
+              Gérez votre planning de garde et vos créneaux de disponibilité
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 pt-4">
             <div className="grid grid-cols-7 gap-2 text-center">
@@ -699,6 +735,9 @@ export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
               <Gift className="w-5 h-5 mr-2 text-emerald-600" />
               Programme de parrainage
             </DialogTitle>
+            <DialogDescription>
+              Parrainez vos collègues et gagnez des bonus ensemble
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 pt-4">
             <div className="text-center p-6 bg-gradient-to-r from-emerald-50 to-cyan-50 rounded-lg">
@@ -763,6 +802,9 @@ export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
               <QrCode className="w-5 h-5 mr-2 text-emerald-600" />
               QR Code de parrainage
             </DialogTitle>
+            <DialogDescription>
+              Partagez votre code de parrainage avec ce QR Code
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="flex justify-center">
@@ -798,6 +840,101 @@ export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
             <div className="flex justify-end">
               <Button onClick={() => setShowQrDialog(false)}>
                 Fermer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* File Upload Dialog */}
+      <Dialog open={showFileUploadDialog} onOpenChange={setShowFileUploadDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Upload className="w-5 h-5 mr-2 text-emerald-600" />
+              Ajouter un document
+            </DialogTitle>
+            <DialogDescription>
+              Téléchargez vos documents professionnels pour compléter votre profil
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 pt-4">
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-4">
+                {currentUploadType === 'diploma' && 'Ajoutez votre diplôme de pharmacie'}
+                {currentUploadType === 'orderNumber' && 'Ajoutez votre certificat Ordre des Pharmaciens'}
+                {currentUploadType === 'specializations' && 'Ajoutez vos certificats de spécialisations'}
+              </p>
+            </div>
+
+            {/* Existing file display */}
+            {uploadedFiles[currentUploadType as keyof typeof uploadedFiles] && (
+              <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <FileText className="w-8 h-8 text-emerald-600" />
+                    <div>
+                      <div className="font-medium text-emerald-900">
+                        {uploadedFiles[currentUploadType as keyof typeof uploadedFiles]?.name}
+                      </div>
+                      <div className="text-sm text-emerald-600">Document actuel</div>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFile(currentUploadType)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* File upload area */}
+            <div className="border-2 border-dashed border-emerald-200 rounded-lg p-6 text-center hover:border-emerald-300 transition-colors">
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                onChange={(e) => handleFileUpload(e.target.files?.[0] || null)}
+                className="hidden"
+                id="file-upload"
+              />
+              <label htmlFor="file-upload" className="cursor-pointer">
+                <Upload className="w-12 h-12 mx-auto text-emerald-600 mb-4" />
+                <p className="text-lg mb-2">
+                  {uploadedFiles[currentUploadType as keyof typeof uploadedFiles] 
+                    ? 'Remplacer le document' 
+                    : 'Choisir un fichier'
+                  }
+                </p>
+                <p className="text-sm text-gray-500">
+                  PDF, JPG, PNG, DOC (max 5MB)
+                </p>
+              </label>
+            </div>
+
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="flex items-center mb-2">
+                <Shield className="w-5 h-5 mr-2 text-blue-600" />
+                Sécurité et confidentialité
+              </h4>
+              <p className="text-sm text-gray-600">
+                Vos documents sont stockés de manière sécurisée et ne sont accessibles 
+                qu'aux employeurs lors de vos candidatures validées.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowFileUploadDialog(false);
+                  setCurrentUploadType('');
+                }}
+              >
+                Annuler
               </Button>
             </div>
           </div>

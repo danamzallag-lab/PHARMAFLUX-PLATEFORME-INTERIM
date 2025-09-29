@@ -95,21 +95,37 @@ export const missionService = {
       }
 
       if (candidates && candidates.length > 0) {
-        // Créer les applications pour chaque candidat trouvé
-        const applications = candidates.map((candidate: MatchedCandidate) => ({
-          candidate_id: candidate.id,
-          mission_id: missionId,
-          status: 'proposé' as const
-        }))
-
-        const { error: applyError } = await supabase
+        // Vérifier les candidatures existantes pour éviter les doublons
+        const { data: existingApplications } = await supabase
           .from('applications')
-          .insert(applications)
+          .select('candidate_id')
+          .eq('mission_id', missionId)
 
-        if (applyError) {
-          console.error('Erreur création applications:', applyError)
+        const existingCandidateIds = new Set(
+          existingApplications?.map(app => app.candidate_id) || []
+        )
+
+        // Créer uniquement les applications pour les nouveaux candidats
+        const newApplications = candidates
+          .filter((candidate: MatchedCandidate) => !existingCandidateIds.has(candidate.id))
+          .map((candidate: MatchedCandidate) => ({
+            candidate_id: candidate.id,
+            mission_id: missionId,
+            status: 'proposé' as const
+          }))
+
+        if (newApplications.length > 0) {
+          const { error: applyError } = await supabase
+            .from('applications')
+            .insert(newApplications)
+
+          if (applyError) {
+            console.error('Erreur création applications:', applyError)
+          } else {
+            console.log(`${newApplications.length} nouveaux candidats matchés pour la mission ${missionId}`)
+          }
         } else {
-          console.log(`${applications.length} candidats matchés pour la mission ${missionId}`)
+          console.log('Aucun nouveau candidat à matcher (tous déjà candidatés)')
         }
       }
     } catch (error) {
@@ -205,7 +221,7 @@ export const missionService = {
   async updateApplicationStatus(
     applicationId: string,
     status: 'accepté' | 'refusé'
-  ): Promise<{ success: boolean; error: any }> {
+  ): Promise<{ success: boolean; error: any; contractGenerating?: boolean }> {
     try {
       const { error } = await supabase
         .from('applications')
@@ -226,20 +242,49 @@ export const missionService = {
             .update({ status: 'assignée' })
             .eq('id', application.mission_id)
 
-          // Générer le contrat automatiquement
-          setTimeout(async () => {
-            try {
-              await contractService.generateContract(application.mission_id)
-            } catch (error) {
-              console.error('Erreur génération contrat:', error)
-            }
-          }, 2000)
+          // Générer le contrat automatiquement de manière asynchrone avec gestion d'erreur
+          this.generateContractAsync(application.mission_id)
+
+          return { success: true, error: null, contractGenerating: true }
         }
       }
 
       return { success: !error, error }
     } catch (error) {
       return { success: false, error }
+    }
+  },
+
+  // Génération asynchrone de contrat avec gestion d'erreur améliorée
+  async generateContractAsync(missionId: string): Promise<void> {
+    try {
+      console.log(`⏳ Génération du contrat pour la mission ${missionId}...`)
+
+      // Vérifier si un contrat existe déjà
+      const { data: existingContract } = await supabase
+        .from('contracts')
+        .select('id')
+        .eq('mission_id', missionId)
+        .single()
+
+      if (existingContract) {
+        console.log('✅ Contrat déjà existant')
+        return
+      }
+
+      // Générer le contrat
+      const { contract, error } = await contractService.generateContract(missionId)
+
+      if (error) {
+        console.error('❌ Erreur lors de la génération du contrat:', error)
+        // TODO: Notifier l'utilisateur de l'échec
+        return
+      }
+
+      console.log('✅ Contrat généré avec succès:', contract?.id)
+    } catch (error) {
+      console.error('❌ Exception lors de la génération du contrat:', error)
+      // TODO: Implémenter un système de retry ou notification
     }
   },
 

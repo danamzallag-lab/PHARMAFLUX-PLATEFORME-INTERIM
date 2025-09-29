@@ -52,44 +52,9 @@
     build: {
       target: 'esnext',
       outDir: 'build',
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            // Séparer les composants UI lourds
-            'ui-components': [
-              '@radix-ui/react-dialog',
-              '@radix-ui/react-dropdown-menu',
-              '@radix-ui/react-select',
-              '@radix-ui/react-navigation-menu',
-              '@radix-ui/react-popover'
-            ],
-            // Séparer les outils utilitaires
-            'utils': [
-              'class-variance-authority',
-              'clsx',
-              'tailwind-merge'
-            ],
-            // Séparer les composants de graphiques
-            'charts': ['recharts'],
-            // Séparer Supabase
-            'supabase': [
-              '@supabase/supabase-js',
-              '@supabase/auth-helpers-react',
-              '@supabase/auth-ui-react'
-            ]
-          }
-        }
-      },
-      chunkSizeWarningLimit: 1000,
     },
     server: {
       port: 3000,
       open: true,
-    },
-    preview: {
-      port: 4173,
-      headers: {
-        'Cache-Control': 'no-cache'
-      }
     },
   });

@@ -9,25 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Slider } from './ui/slider';
 import { Icon } from './shared/Icons';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { useRealMissions, useRealApplications } from '../hooks/useRealMissions';
-import { useAuth } from '../contexts/AuthContext';
-import { MapPin, Calendar, Clock, Euro, Heart, Building, ArrowLeft } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { toast } from 'sonner';
 
 interface JobsPageProps {
   onNavigate: (page: string) => void;
 }
 
 export function JobsPage({ onNavigate }: JobsPageProps) {
-  const { profile } = useAuth();
-  const { missions, loading, error } = useRealMissions();
-  const { applyToMission, applications } = useRealApplications();
-
   const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [salaryRange, setSalaryRange] = useState([10, 50]); // Ajusté pour les tarifs horaires
+  const [salaryRange, setSalaryRange] = useState([30, 80]);
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedType, setSelectedType] = useState('');
 

@@ -7,8 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { ArrowLeft, Mail, Lock, User, Building, Eye, EyeOff, Sparkles } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 
 interface AuthPageProps {
   onNavigate: (page: string) => void;
@@ -17,78 +15,25 @@ interface AuthPageProps {
 
 export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [userType, setUserType] = useState<'candidat' | 'employeur'>('candidat');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [userType, setUserType] = useState<'candidate' | 'employer'>('candidate');
+  const [isNewUser, setIsNewUser] = useState(false);
 
-  const { signIn, signUp } = useAuth();
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      setError('Veuillez remplir tous les champs');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) {
-        setError(error.message || 'Erreur de connexion');
-        setLoading(false);
-        return;
-      }
-
-      if (data?.user) {
-        // Redirection immédiate - le useEffect d'App.tsx gérera le profil
-        console.log('✅ Connexion réussie, redirection...');
-
-        // Redirection par défaut vers candidat, l'App.tsx corrigera si nécessaire
+  const handleLogin = () => {
+    if (userType === 'candidate') {
+      // Pour une démo, considérons que c'est un nouvel utilisateur si on est sur l'onglet "register"
+      if (defaultTab === 'register' || isNewUser) {
+        onNavigate('profile-setup');
+      } else {
         onNavigate('candidate-dashboard');
-        setLoading(false);
       }
-    } catch (err) {
-      setError('Erreur de connexion');
-      setLoading(false);
+    } else {
+      onNavigate('employer-dashboard');
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password || !name) {
-      setError('Veuillez remplir tous les champs');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { error } = await signUp(email, password, {
-        name,
-        type: userType
-      });
-      if (error) {
-        setError(error.message || 'Erreur d\'inscription');
-      } else {
-        setError(null);
-        // Afficher un message de succès
-        alert('Inscription réussie ! Vérifiez votre email pour confirmer votre compte.');
-      }
-    } catch (err) {
-      setError('Erreur d\'inscription');
-    } finally {
-      setLoading(false);
-    }
+  const handleRegister = () => {
+    setIsNewUser(true);
+    handleLogin();
   };
 
   return (
@@ -192,21 +137,15 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.5 }}
                 >
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                      {error}
-                    </div>
-                  )}
-
                   {/* User Type Selection */}
                   <div className="grid grid-cols-2 gap-3 mb-6">
                     <motion.button
                       className={`p-3 rounded-lg border transition-all ${
-                        userType === 'candidat'
+                        userType === 'candidate'
                           ? 'bg-emerald-100 border-emerald-400 text-emerald-700'
                           : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                       }`}
-                      onClick={() => setUserType('candidat')}
+                      onClick={() => setUserType('candidate')}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -215,11 +154,11 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                     </motion.button>
                     <motion.button
                       className={`p-3 rounded-lg border transition-all ${
-                        userType === 'employeur'
+                        userType === 'employer'
                           ? 'bg-blue-100 border-blue-400 text-blue-700'
                           : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                       }`}
-                      onClick={() => setUserType('employeur')}
+                      onClick={() => setUserType('employer')}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -228,7 +167,7 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                     </motion.button>
                   </div>
 
-                  <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-4">
                     <div>
                       <Label htmlFor="email" className="text-gray-700 mb-2 block">Email</Label>
                       <div className="relative">
@@ -237,8 +176,6 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                           id="email"
                           type="email"
                           placeholder="votre@email.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
                           className="pl-10 bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-emerald-400"
                         />
                       </div>
@@ -252,8 +189,6 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                           id="password"
                           type={showPassword ? 'text' : 'password'}
                           placeholder="••••••••"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
                           className="pl-10 pr-10 bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-emerald-400"
                         />
                         <button
@@ -276,14 +211,13 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                       </button>
                     </div>
 
-                    <Button
+                    <Button 
                       className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white border-0 py-3"
                       onClick={handleLogin}
-                      disabled={loading}
                     >
-                      {loading ? 'Connexion...' : 'Se connecter'}
+                      Se connecter
                     </Button>
-                  </form>
+                  </div>
                 </motion.div>
               </TabsContent>
 
@@ -293,21 +227,15 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.5 }}
                 >
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                      {error}
-                    </div>
-                  )}
-
                   {/* User Type Selection */}
                   <div className="grid grid-cols-2 gap-3 mb-6">
                     <motion.button
                       className={`p-3 rounded-lg border transition-all ${
-                        userType === 'candidat'
+                        userType === 'candidate'
                           ? 'bg-emerald-100 border-emerald-400 text-emerald-700'
                           : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                       }`}
-                      onClick={() => setUserType('candidat')}
+                      onClick={() => setUserType('candidate')}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -316,11 +244,11 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                     </motion.button>
                     <motion.button
                       className={`p-3 rounded-lg border transition-all ${
-                        userType === 'employeur'
+                        userType === 'employer'
                           ? 'bg-blue-100 border-blue-400 text-blue-700'
                           : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                       }`}
-                      onClick={() => setUserType('employeur')}
+                      onClick={() => setUserType('employer')}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -329,18 +257,13 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                     </motion.button>
                   </div>
 
-                  <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="firstName" className="text-gray-700 mb-2 block">Prénom</Label>
                         <Input
                           id="firstName"
                           placeholder="John"
-                          value={name.split(' ')[0] || ''}
-                          onChange={(e) => {
-                            const lastName = name.split(' ').slice(1).join(' ') || '';
-                            setName(e.target.value + (lastName ? ' ' + lastName : ''));
-                          }}
                           className="bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-emerald-400"
                         />
                       </div>
@@ -349,11 +272,6 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                         <Input
                           id="lastName"
                           placeholder="Doe"
-                          value={name.split(' ').slice(1).join(' ') || ''}
-                          onChange={(e) => {
-                            const firstName = name.split(' ')[0] || '';
-                            setName(firstName + (e.target.value ? ' ' + e.target.value : ''));
-                          }}
                           className="bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-emerald-400"
                         />
                       </div>
@@ -367,8 +285,6 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                           id="registerEmail"
                           type="email"
                           placeholder="votre@email.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
                           className="pl-10 bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-emerald-400"
                         />
                       </div>
@@ -382,8 +298,6 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                           id="registerPassword"
                           type={showPassword ? 'text' : 'password'}
                           placeholder="••••••••"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
                           className="pl-10 pr-10 bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-emerald-400"
                         />
                         <button
@@ -403,14 +317,13 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                       </Label>
                     </div>
 
-                    <Button
+                    <Button 
                       className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white border-0 py-3"
-                      onClick={handleSignUp}
-                      disabled={loading}
+                      onClick={handleRegister}
                     >
-                      {loading ? 'Inscription...' : 'Créer mon compte'}
+                      Créer mon compte
                     </Button>
-                  </form>
+                  </div>
                 </motion.div>
               </TabsContent>
             </Tabs>

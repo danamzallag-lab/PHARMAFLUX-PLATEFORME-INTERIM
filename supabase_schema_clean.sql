@@ -60,6 +60,17 @@ CREATE TABLE IF NOT EXISTS profiles (
   longitude DOUBLE PRECISION,
   competences TEXT[],
   availabilities JSONB,
+  -- Champs spécifiques employeurs
+  company_name TEXT,
+  legal_name TEXT,
+  siret TEXT,
+  address_street TEXT,
+  address_city TEXT,
+  address_postal_code TEXT,
+  hr_contact_name TEXT,
+  hr_contact_email TEXT,
+  hr_contact_phone TEXT,
+  onboarding_completed BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -120,6 +131,17 @@ CREATE TABLE IF NOT EXISTS referrals (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Table documents employeurs
+CREATE TABLE IF NOT EXISTS employer_documents (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  employer_id UUID REFERENCES profiles(id) NOT NULL,
+  document_type TEXT NOT NULL CHECK (document_type IN ('kbis','ars','insurance','other')),
+  file_name TEXT NOT NULL,
+  file_url TEXT NOT NULL,
+  file_size INTEGER,
+  uploaded_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- 4. FONCTIONS UTILITAIRES
 
 -- Fonction helper pour obtenir l'UID
@@ -128,12 +150,17 @@ LANGUAGE SQL STABLE AS $$
   SELECT auth.uid()
 $$;
 
--- Fonction de création automatique de profil
+-- Fonction de création automatique de profil (détecte le type depuis metadata)
 CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.profiles (auth_uid, email, type, name)
-  VALUES (NEW.id, NEW.email, 'candidat', COALESCE(NEW.raw_user_meta_data->>'name', NEW.email))
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'type', 'candidat')::TEXT,
+    COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1))
+  )
   ON CONFLICT (auth_uid) DO NOTHING;
   RETURN NEW;
 END;
@@ -173,10 +200,80 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
--- 5. TRIGGER
+-- 5. TRIGGERS
+
+-- Trigger création automatique de profil
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_auth_user();
+
+-- Trigger attribution automatique de points après mission terminée
+CREATE OR REPLACE FUNCTION public.add_loyalty_points_on_mission_completed()
+RETURNS TRIGGER AS $$
+DECLARE
+  candidate_profile_id UUID;
+BEGIN
+  -- Vérifier que la mission passe de 'assignée' à 'terminée'
+  IF NEW.status = 'terminée' AND OLD.status != 'terminée' THEN
+    -- Trouver le candidat qui a été accepté pour cette mission
+    SELECT candidate_id INTO candidate_profile_id
+    FROM applications
+    WHERE mission_id = NEW.id AND status = 'accepté'
+    LIMIT 1;
+
+    IF candidate_profile_id IS NOT NULL THEN
+      -- Ajouter 100 points au candidat
+      INSERT INTO loyalty_points (user_id, total_points, level)
+      VALUES (candidate_profile_id, 100, 'Bronze')
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        total_points = loyalty_points.total_points + 100,
+        level = CASE
+          WHEN loyalty_points.total_points + 100 >= 5000 THEN 'Platine'
+          WHEN loyalty_points.total_points + 100 >= 2500 THEN 'Or'
+          WHEN loyalty_points.total_points + 100 >= 1000 THEN 'Argent'
+          ELSE 'Bronze'
+        END;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_mission_completed
+  AFTER UPDATE ON missions
+  FOR EACH ROW
+  WHEN (NEW.status = 'terminée' AND OLD.status != 'terminée')
+  EXECUTE PROCEDURE public.add_loyalty_points_on_mission_completed();
+
+-- Trigger attribution automatique de points après parrainage réussi
+CREATE OR REPLACE FUNCTION public.reward_referrer_on_registration()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Vérifier que le statut passe à 'rewarded'
+  IF NEW.status = 'rewarded' AND OLD.status != 'rewarded' THEN
+    -- Ajouter 50 points au parrain
+    INSERT INTO loyalty_points (user_id, total_points, level)
+    VALUES (NEW.referrer_id, 50, 'Bronze')
+    ON CONFLICT (user_id)
+    DO UPDATE SET
+      total_points = loyalty_points.total_points + 50,
+      level = CASE
+        WHEN loyalty_points.total_points + 50 >= 5000 THEN 'Platine'
+        WHEN loyalty_points.total_points + 50 >= 2500 THEN 'Or'
+        WHEN loyalty_points.total_points + 50 >= 1000 THEN 'Argent'
+        ELSE 'Bronze'
+      END;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_referral_rewarded
+  AFTER UPDATE ON referrals
+  FOR EACH ROW
+  WHEN (NEW.status = 'rewarded' AND OLD.status != 'rewarded')
+  EXECUTE PROCEDURE public.reward_referrer_on_registration();
 
 -- 6. SÉCURITÉ RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -185,6 +282,7 @@ ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contracts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE loyalty_points ENABLE ROW LEVEL SECURITY;
 ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE employer_documents ENABLE ROW LEVEL SECURITY;
 
 -- 7. POLICIES RLS
 
@@ -270,6 +368,12 @@ CREATE POLICY "manage_own_referrals" ON referrals
     referrer_id IN (SELECT id FROM profiles WHERE auth_uid = uid())
   );
 
+-- Employer documents: seul l'employeur propriétaire peut gérer ses documents
+CREATE POLICY "employer_manage_own_documents" ON employer_documents
+  FOR ALL USING (
+    employer_id IN (SELECT id FROM profiles WHERE auth_uid = uid())
+  );
+
 -- 8. INDEX POUR PERFORMANCES
 CREATE INDEX IF NOT EXISTS idx_profiles_auth_uid ON profiles(auth_uid);
 CREATE INDEX IF NOT EXISTS idx_profiles_type ON profiles(type);
@@ -280,3 +384,5 @@ CREATE INDEX IF NOT EXISTS idx_missions_type ON missions(type);
 CREATE INDEX IF NOT EXISTS idx_applications_candidate_id ON applications(candidate_id);
 CREATE INDEX IF NOT EXISTS idx_applications_mission_id ON applications(mission_id);
 CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status);
+CREATE INDEX IF NOT EXISTS idx_employer_documents_employer_id ON employer_documents(employer_id);
+CREATE INDEX IF NOT EXISTS idx_employer_documents_type ON employer_documents(document_type);

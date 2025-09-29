@@ -1,52 +1,113 @@
-import { useState, useEffect, Suspense, lazy } from 'react';
+import { useState, useEffect } from 'react';
 import { LandingPage } from './components/LandingPage';
-import { DebugQuickAccess } from './components/DebugQuickAccess';
-import { useAuth } from './contexts/AuthContext';
-
-// Lazy loading des composants
-const AuthPage = lazy(() => import('./components/AuthPage').then(module => ({ default: module.AuthPage })));
-const CandidatePage = lazy(() => import('./components/CandidatePage').then(module => ({ default: module.CandidatePage })));
-const CandidatePreDashboard = lazy(() => import('./components/CandidatePreDashboard').then(module => ({ default: module.CandidatePreDashboard })));
-const EmployerPage = lazy(() => import('./components/EmployerPage').then(module => ({ default: module.EmployerPage })));
-const CandidateDashboard = lazy(() => import('./components/CandidateDashboardReal').then(module => ({ default: module.CandidateDashboardReal })));
-const EmployerDashboard = lazy(() => import('./components/EmployerDashboardReal').then(module => ({ default: module.EmployerDashboardReal })));
-const JobsPage = lazy(() => import('./components/JobsPageReal').then(module => ({ default: module.JobsPageReal })));
-const JobDetailPage = lazy(() => import('./components/JobDetailPage').then(module => ({ default: module.JobDetailPage })));
-const CreateJobPage = lazy(() => import('./components/CreateJobPage').then(module => ({ default: module.CreateJobPage })));
-const DebugEnvPage = lazy(() => import('./components/DebugEnvPage').then(module => ({ default: module.DebugEnvPage })));
-
-// Composant de loading
-const LoadingSpinner = () => (
-  <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50 flex items-center justify-center">
-    <div className="text-center">
-      <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-      <p className="text-gray-600">Chargement...</p>
-    </div>
-  </div>
-);
+import { AuthPage } from './components/AuthPage';
+import { CandidatePage } from './components/CandidatePage';
+import { CandidatePreDashboard } from './components/CandidatePreDashboard';
+import { EmployerPage } from './components/EmployerPage';
+import { CandidateDashboard } from './components/CandidateDashboard';
+import { EmployerDashboard } from './components/EmployerDashboard';
+import { JobsPage } from './components/JobsPage';
+import { JobDetailPage } from './components/JobDetailPage';
+import { CreateJobPage } from './components/CreateJobPage';
+import { ProfileSetup } from './components/ProfileSetup';
+import { Onboarding } from './components/Onboarding';
+import { EmployerOnboarding } from './components/EmployerOnboarding';
+import { useAuth } from './hooks/useAuth';
 
 export default function App() {
+  const { user, profile, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState('landing');
   const [authTab, setAuthTab] = useState('login');
-  const { user, profile, loading } = useAuth();
 
+  // Routing automatique basé sur l'authentification et le profil
   useEffect(() => {
-    if (!loading && user && profile) {
-      // Rediriger automatiquement selon le type de profil
-      if (profile.type === 'candidat') {
-        setCurrentPage('candidate-dashboard');
-      } else if (profile.type === 'employeur') {
-        setCurrentPage('employer-dashboard');
+    if (loading) return;
+
+    // Si utilisateur non connecté et tentative d'accès à une page protégée
+    const protectedPages = [
+      'candidate-dashboard',
+      'employer-dashboard',
+      'onboarding-employer',
+      'profile-setup',
+      'create-job',
+      'jobs',
+      'job-detail'
+    ];
+
+    if (!user && protectedPages.includes(currentPage)) {
+      setCurrentPage('auth');
+      return;
+    }
+
+    // Si utilisateur connecté
+    if (user && profile) {
+      // Redirection automatique après login
+      if (currentPage === 'auth') {
+        if (profile.type === 'candidat') {
+          setCurrentPage('candidate-dashboard');
+        } else if (profile.type === 'employeur') {
+          if (!profile.onboarding_completed) {
+            setCurrentPage('onboarding-employer');
+          } else {
+            setCurrentPage('employer-dashboard');
+          }
+        }
+        return;
       }
-    } else if (!loading && !user) {
-      // Rediriger vers la landing page si pas connecté
-      if (currentPage !== 'landing' && currentPage !== 'auth') {
-        setCurrentPage('landing');
+
+      // Empêcher accès croisé : candidat ne peut pas accéder au dashboard employeur et vice-versa
+      if (profile.type === 'candidat' && currentPage === 'employer-dashboard') {
+        setCurrentPage('candidate-dashboard');
+        return;
+      }
+
+      if (profile.type === 'employeur' && currentPage === 'candidate-dashboard') {
+        if (!profile.onboarding_completed) {
+          setCurrentPage('onboarding-employer');
+        } else {
+          setCurrentPage('employer-dashboard');
+        }
+        return;
+      }
+
+      // Forcer onboarding employeur si pas complété
+      if (
+        profile.type === 'employeur' &&
+        !profile.onboarding_completed &&
+        currentPage !== 'onboarding-employer' &&
+        currentPage !== 'landing' &&
+        currentPage !== 'auth'
+      ) {
+        setCurrentPage('onboarding-employer');
+        return;
       }
     }
-  }, [user, profile, loading]);
+  }, [user, profile, loading, currentPage]);
 
   const navigate = (page: string) => {
+    // Validation de navigation selon le type d'utilisateur
+    if (user && profile) {
+      const candidateOnlyPages = ['candidate-dashboard', 'profile-setup'];
+      const employerOnlyPages = ['employer-dashboard', 'create-job', 'onboarding-employer'];
+
+      if (profile.type === 'candidat' && employerOnlyPages.includes(page)) {
+        console.warn('Accès refusé : page réservée aux employeurs');
+        return;
+      }
+
+      if (profile.type === 'employeur' && candidateOnlyPages.includes(page)) {
+        console.warn('Accès refusé : page réservée aux candidats');
+        return;
+      }
+
+      // Empêcher employeur d'accéder aux pages protégées sans onboarding
+      if (profile.type === 'employeur' && !profile.onboarding_completed && page !== 'onboarding-employer' && page !== 'landing') {
+        console.warn('Veuillez compléter votre onboarding d\'abord');
+        setCurrentPage('onboarding-employer');
+        return;
+      }
+    }
+
     if (page === 'auth-register') {
       setCurrentPage('auth');
       setAuthTab('register');
@@ -59,8 +120,16 @@ export default function App() {
   };
 
   const renderPage = () => {
+    // Afficher écran de chargement pendant vérification auth
     if (loading) {
-      return <LoadingSpinner />;
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Chargement...</p>
+          </div>
+        </div>
+      );
     }
 
     switch (currentPage) {
@@ -74,18 +143,22 @@ export default function App() {
         return <CandidatePreDashboard onNavigate={navigate} />;
       case 'employer-page':
         return <EmployerPage onNavigate={navigate} />;
+      case 'profile-setup':
+        return user && profile?.type === 'candidat' ? <ProfileSetup onNavigate={navigate} /> : <AuthPage onNavigate={navigate} defaultTab={authTab} />;
+      case 'onboarding-candidate':
+        return user && profile?.type === 'candidat' ? <Onboarding onNavigate={navigate} userType="candidate" userName={profile.name || 'Utilisateur'} /> : <AuthPage onNavigate={navigate} defaultTab={authTab} />;
+      case 'onboarding-employer':
+        return user && profile?.type === 'employeur' ? <EmployerOnboarding onNavigate={navigate} employerName={profile.name || 'Employeur'} /> : <AuthPage onNavigate={navigate} defaultTab={authTab} />;
       case 'candidate-dashboard':
-        return <CandidateDashboard onNavigate={navigate} />;
+        return user && profile?.type === 'candidat' ? <CandidateDashboard onNavigate={navigate} /> : <AuthPage onNavigate={navigate} defaultTab={authTab} />;
       case 'employer-dashboard':
-        return <EmployerDashboard onNavigate={navigate} />;
+        return user && profile?.type === 'employeur' && profile.onboarding_completed ? <EmployerDashboard onNavigate={navigate} /> : <AuthPage onNavigate={navigate} defaultTab={authTab} />;
       case 'jobs':
         return <JobsPage onNavigate={navigate} />;
       case 'job-detail':
         return <JobDetailPage onNavigate={navigate} />;
       case 'create-job':
-        return <CreateJobPage onNavigate={navigate} />;
-      case 'debug-env':
-        return <DebugEnvPage onNavigate={navigate} />;
+        return user && profile?.type === 'employeur' && profile.onboarding_completed ? <CreateJobPage onNavigate={navigate} /> : <AuthPage onNavigate={navigate} defaultTab={authTab} />;
       default:
         return <LandingPage onNavigate={navigate} />;
     }
@@ -93,10 +166,7 @@ export default function App() {
 
   return (
     <div className="size-full">
-      <Suspense fallback={<LoadingSpinner />}>
-        {renderPage()}
-      </Suspense>
-      <DebugQuickAccess onNavigate={navigate} />
+      {renderPage()}
     </div>
   );
 }
