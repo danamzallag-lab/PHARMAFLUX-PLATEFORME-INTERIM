@@ -6,7 +6,8 @@ import { Card } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
-import { ArrowLeft, Mail, Lock, User, Building, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, User, Building, Eye, EyeOff, Sparkles, AlertCircle } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 interface AuthPageProps {
   onNavigate: (page: string) => void;
@@ -14,26 +15,83 @@ interface AuthPageProps {
 }
 
 export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
+  const { signIn, signUp } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [userType, setUserType] = useState<'candidate' | 'employer'>('candidate');
-  const [isNewUser, setIsNewUser] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = () => {
-    if (userType === 'candidate') {
-      // Pour une démo, considérons que c'est un nouvel utilisateur si on est sur l'onglet "register"
-      if (defaultTab === 'register' || isNewUser) {
-        onNavigate('profile-setup');
-      } else {
-        onNavigate('candidate-dashboard');
+  // Form data
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setError('Veuillez remplir tous les champs');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { error: signInError } = await signIn(email, password);
+
+      if (signInError) {
+        setError('Email ou mot de passe incorrect');
+        return;
       }
-    } else {
-      onNavigate('employer-dashboard');
+
+      // La redirection sera gérée automatiquement par App.tsx via useEffect
+    } catch (err) {
+      setError('Erreur lors de la connexion');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleRegister = () => {
-    setIsNewUser(true);
-    handleLogin();
+  const handleRegister = async () => {
+    if (!email || !password || !firstName || !lastName) {
+      setError('Veuillez remplir tous les champs');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const fullName = `${firstName} ${lastName}`;
+      const metadata = {
+        name: fullName,
+        type: userType === 'candidate' ? 'candidat' : 'employeur'
+      };
+
+      const { error: signUpError } = await signUp(email, password, metadata);
+
+      if (signUpError) {
+        if (signUpError.message.includes('already registered')) {
+          setError('Cet email est déjà utilisé');
+        } else {
+          setError('Erreur lors de l\'inscription');
+        }
+        return;
+      }
+
+      // La redirection sera gérée automatiquement par App.tsx
+    } catch (err) {
+      setError('Erreur lors de l\'inscription');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -106,7 +164,7 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
         <Card className="backdrop-blur-xl bg-white/90 border-white/20 shadow-2xl">
           <div className="p-8">
             {/* Header */}
-            <motion.div 
+            <motion.div
               className="text-center mb-8"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -120,6 +178,18 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
               <h1 className="text-2xl text-gray-800 mb-2">Bienvenue sur PharmaFlux</h1>
               <p className="text-gray-600">Connectez-vous pour accéder à votre espace</p>
             </motion.div>
+
+            {/* Message d'erreur */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </motion.div>
+            )}
 
             <Tabs defaultValue={defaultTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-emerald-50 border border-emerald-200">
@@ -176,6 +246,8 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                           id="email"
                           type="email"
                           placeholder="votre@email.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
                           className="pl-10 bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-emerald-400"
                         />
                       </div>
@@ -189,6 +261,9 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                           id="password"
                           type={showPassword ? 'text' : 'password'}
                           placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
                           className="pl-10 pr-10 bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-emerald-400"
                         />
                         <button
@@ -211,11 +286,19 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                       </button>
                     </div>
 
-                    <Button 
+                    <Button
                       className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white border-0 py-3"
                       onClick={handleLogin}
+                      disabled={isLoading}
                     >
-                      Se connecter
+                      {isLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Connexion...
+                        </>
+                      ) : (
+                        'Se connecter'
+                      )}
                     </Button>
                   </div>
                 </motion.div>
@@ -264,6 +347,8 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                         <Input
                           id="firstName"
                           placeholder="John"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
                           className="bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-emerald-400"
                         />
                       </div>
@@ -272,6 +357,8 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                         <Input
                           id="lastName"
                           placeholder="Doe"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
                           className="bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-emerald-400"
                         />
                       </div>
@@ -285,6 +372,8 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                           id="registerEmail"
                           type="email"
                           placeholder="votre@email.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
                           className="pl-10 bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-emerald-400"
                         />
                       </div>
@@ -298,6 +387,9 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                           id="registerPassword"
                           type={showPassword ? 'text' : 'password'}
                           placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleRegister()}
                           className="pl-10 pr-10 bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 focus:border-emerald-400"
                         />
                         <button
@@ -317,11 +409,19 @@ export function AuthPage({ onNavigate, defaultTab = 'login' }: AuthPageProps) {
                       </Label>
                     </div>
 
-                    <Button 
+                    <Button
                       className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white border-0 py-3"
                       onClick={handleRegister}
+                      disabled={isLoading}
                     >
-                      Créer mon compte
+                      {isLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Inscription...
+                        </>
+                      ) : (
+                        'Créer mon compte'
+                      )}
                     </Button>
                   </div>
                 </motion.div>
