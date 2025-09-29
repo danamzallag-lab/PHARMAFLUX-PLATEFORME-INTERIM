@@ -8,8 +8,12 @@ CREATE EXTENSION IF NOT EXISTS "earthdistance";
 
 -- 2. NETTOYAGE (supprimer les conflits)
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS on_mission_completed ON missions;
+DROP TRIGGER IF EXISTS on_referral_rewarded ON referrals;
 DROP FUNCTION IF EXISTS public.handle_new_auth_user();
 DROP FUNCTION IF EXISTS public.find_matching_candidates(uuid);
+DROP FUNCTION IF EXISTS public.add_loyalty_points_on_mission_completed();
+DROP FUNCTION IF EXISTS public.reward_referrer_on_registration();
 
 -- Supprimer les policies existantes pour éviter les conflits
 DROP POLICY IF EXISTS "read_own_profile" ON profiles;
