@@ -79,12 +79,52 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (error) {
         console.error('❌ Error loading profile:', error)
         console.error('❌ Error details:', error.message, error.details)
+
+        // Si le profil n'existe pas (0 rows), le créer automatiquement
+        if (error.details === 'The result contains 0 rows') {
+          console.log('🔨 Profile not found, creating default profile...')
+          await createMissingProfile(authUid)
+        }
       } else {
         console.log('✅ Profile loaded successfully:', data)
         setProfile(data)
       }
     } catch (error) {
       console.error('❌ Exception loading profile:', error)
+    }
+  }
+
+  const createMissingProfile = async (authUid: string) => {
+    try {
+      // Récupérer l'email de l'utilisateur authentifié
+      const { data: { user } } = await auth.getUser()
+
+      if (user) {
+        const profileData = {
+          auth_uid: authUid,
+          email: user.email || 'unknown@example.com',
+          type: 'candidat' as const,
+          name: user.email?.split('@')[0] || 'Utilisateur',
+          phone: null,
+          latitude: null,
+          longitude: null,
+          competences: null,
+          availabilities: null
+        }
+
+        console.log('🔨 Creating profile:', profileData)
+        const { data, error } = await profiles.create(profileData)
+
+        if (error) {
+          console.error('❌ Failed to create profile:', error)
+        } else {
+          console.log('✅ Profile created successfully, reloading...')
+          // Recharger le profil après création
+          await loadProfile(authUid)
+        }
+      }
+    } catch (error) {
+      console.error('❌ Exception creating profile:', error)
     }
   }
 
