@@ -1,17 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { LandingPage } from './components/LandingPage';
-import { AuthPage } from './components/AuthPage';
-import { CandidatePage } from './components/CandidatePage';
-import { CandidatePreDashboard } from './components/CandidatePreDashboard';
-import { EmployerPage } from './components/EmployerPage';
-import { CandidateDashboard } from './components/CandidateDashboard';
-import { EmployerDashboard } from './components/EmployerDashboard';
-import { JobsPage } from './components/JobsPage';
-import { JobDetailPage } from './components/JobDetailPage';
-import { CreateJobPage } from './components/CreateJobPage';
-import { DebugEnvPage } from './components/DebugEnvPage';
 import { DebugQuickAccess } from './components/DebugQuickAccess';
 import { useAuth } from './contexts/AuthContext';
+
+// Lazy loading des composants
+const AuthPage = lazy(() => import('./components/AuthPage').then(module => ({ default: module.AuthPage })));
+const CandidatePage = lazy(() => import('./components/CandidatePage').then(module => ({ default: module.CandidatePage })));
+const CandidatePreDashboard = lazy(() => import('./components/CandidatePreDashboard').then(module => ({ default: module.CandidatePreDashboard })));
+const EmployerPage = lazy(() => import('./components/EmployerPage').then(module => ({ default: module.EmployerPage })));
+const CandidateDashboard = lazy(() => import('./components/CandidateDashboard').then(module => ({ default: module.CandidateDashboard })));
+const EmployerDashboard = lazy(() => import('./components/EmployerDashboard').then(module => ({ default: module.EmployerDashboard })));
+const JobsPage = lazy(() => import('./components/JobsPage').then(module => ({ default: module.JobsPage })));
+const JobDetailPage = lazy(() => import('./components/JobDetailPage').then(module => ({ default: module.JobDetailPage })));
+const CreateJobPage = lazy(() => import('./components/CreateJobPage').then(module => ({ default: module.CreateJobPage })));
+const DebugEnvPage = lazy(() => import('./components/DebugEnvPage').then(module => ({ default: module.DebugEnvPage })));
+
+// Composant de loading
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50 flex items-center justify-center">
+    <div className="text-center">
+      <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-gray-600">Chargement...</p>
+    </div>
+  </div>
+);
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('landing');
@@ -48,14 +60,7 @@ export default function App() {
 
   const renderPage = () => {
     if (loading) {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Chargement...</p>
-          </div>
-        </div>
-      );
+      return <LoadingSpinner />;
     }
 
     switch (currentPage) {
@@ -88,7 +93,9 @@ export default function App() {
 
   return (
     <div className="size-full">
-      {renderPage()}
+      <Suspense fallback={<LoadingSpinner />}>
+        {renderPage()}
+      </Suspense>
       <DebugQuickAccess onNavigate={navigate} />
     </div>
   );

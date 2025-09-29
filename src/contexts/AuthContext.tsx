@@ -73,23 +73,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const loadProfile = async (authUid: string) => {
     try {
+      console.log('🔍 Loading profile for auth_uid:', authUid)
       const { data, error } = await profiles.getByAuthUid(authUid)
+
       if (error) {
-        console.error('Error loading profile:', error)
+        console.error('❌ Error loading profile:', error)
+        console.error('❌ Error details:', error.message, error.details)
       } else {
+        console.log('✅ Profile loaded successfully:', data)
         setProfile(data)
       }
     } catch (error) {
-      console.error('Error loading profile:', error)
+      console.error('❌ Exception loading profile:', error)
     }
   }
 
   const signIn = async (email: string, password: string) => {
+    console.log('🔑 Attempting sign in for:', email)
     const result = await auth.signIn(email, password)
 
     if (result.error) {
+      console.error('❌ Sign in error:', result.error)
       return { error: result.error, data: null }
     }
+
+    console.log('✅ Sign in successful for user:', result.data?.user?.id)
 
     if (result.data?.user) {
       // Charger le profil immédiatement après connexion
