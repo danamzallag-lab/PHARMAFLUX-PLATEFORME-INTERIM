@@ -50,6 +50,9 @@ DROP POLICY IF EXISTS "manage_own_loyalty_points" ON loyalty_points;
 -- Referrals policies
 DROP POLICY IF EXISTS "manage_own_referrals" ON referrals;
 
+-- Employer documents policies
+DROP POLICY IF EXISTS "employer_manage_own_documents" ON employer_documents;
+
 -- 3. TABLES PRINCIPALES
 
 -- Table des profils (candidats/employeurs)
