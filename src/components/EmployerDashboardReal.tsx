@@ -25,8 +25,9 @@ import {
   XCircle,
   AlertCircle
 } from 'lucide-react';
-import { useMissions, useMissionStats } from '../hooks/useMissions';
-import { useAuth } from '../hooks/useAuth';
+import { useRealMissions } from '../hooks/useRealMissions';
+import { useUserStats } from '../hooks/useUserStats';
+import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -36,8 +37,8 @@ interface EmployerDashboardRealProps {
 
 export function EmployerDashboardReal({ onNavigate }: EmployerDashboardRealProps) {
   const { profile, signOut } = useAuth();
-  const { missions, loading: missionsLoading, refetch } = useMissions();
-  const { stats, loading: statsLoading } = useMissionStats();
+  const { missions, loading: missionsLoading, refetch } = useRealMissions();
+  const { stats, loading: statsLoading } = useUserStats();
 
   const handleSignOut = async () => {
     await signOut();

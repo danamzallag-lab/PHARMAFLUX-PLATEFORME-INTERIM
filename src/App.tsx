@@ -8,9 +8,9 @@ const AuthPage = lazy(() => import('./components/AuthPage').then(module => ({ de
 const CandidatePage = lazy(() => import('./components/CandidatePage').then(module => ({ default: module.CandidatePage })));
 const CandidatePreDashboard = lazy(() => import('./components/CandidatePreDashboard').then(module => ({ default: module.CandidatePreDashboard })));
 const EmployerPage = lazy(() => import('./components/EmployerPage').then(module => ({ default: module.EmployerPage })));
-const CandidateDashboard = lazy(() => import('./components/CandidateDashboard').then(module => ({ default: module.CandidateDashboard })));
-const EmployerDashboard = lazy(() => import('./components/EmployerDashboard').then(module => ({ default: module.EmployerDashboard })));
-const JobsPage = lazy(() => import('./components/JobsPage').then(module => ({ default: module.JobsPage })));
+const CandidateDashboard = lazy(() => import('./components/CandidateDashboardReal').then(module => ({ default: module.CandidateDashboardReal })));
+const EmployerDashboard = lazy(() => import('./components/EmployerDashboardReal').then(module => ({ default: module.EmployerDashboardReal })));
+const JobsPage = lazy(() => import('./components/JobsPageReal').then(module => ({ default: module.JobsPageReal })));
 const JobDetailPage = lazy(() => import('./components/JobDetailPage').then(module => ({ default: module.JobDetailPage })));
 const CreateJobPage = lazy(() => import('./components/CreateJobPage').then(module => ({ default: module.CreateJobPage })));
 const DebugEnvPage = lazy(() => import('./components/DebugEnvPage').then(module => ({ default: module.DebugEnvPage })));

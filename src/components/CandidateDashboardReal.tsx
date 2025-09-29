@@ -19,8 +19,9 @@ import {
   TrendingUp,
   Briefcase
 } from 'lucide-react';
-import { useApplications, useMissionStats } from '../hooks/useMissions';
-import { useAuth } from '../hooks/useAuth';
+import { useRealApplications } from '../hooks/useRealMissions';
+import { useUserStats } from '../hooks/useUserStats';
+import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -31,8 +32,8 @@ interface CandidateDashboardRealProps {
 
 export function CandidateDashboardReal({ onNavigate }: CandidateDashboardRealProps) {
   const { profile, signOut } = useAuth();
-  const { applications, loading, updateApplicationStatus } = useApplications();
-  const { stats, loading: statsLoading } = useMissionStats();
+  const { applications, loading, updateApplicationStatus } = useRealApplications();
+  const { stats, loading: statsLoading } = useUserStats();
 
   const handleSignOut = async () => {
     await signOut();
@@ -49,7 +50,7 @@ export function CandidateDashboardReal({ onNavigate }: CandidateDashboardRealPro
           : `Mission "${missionTitle}" refusée.`
       );
     } else {
-      toast.error('Erreur lors de la mise à jour');
+      toast.error('Erreur lors de la mise à jour: ' + (result.error?.message || 'Erreur inconnue'));
     }
   };
 
